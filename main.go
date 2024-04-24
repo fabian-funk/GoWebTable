@@ -15,23 +15,32 @@ type Stock struct {
 }
 
 var tmpl = template.Must(template.ParseGlob("templates/*"))
-var db, _ = sql.Open("sqlite3", "stocks.db")
+
+func dbConn() (db *sql.DB) {
+	db, err := sql.Open("sqlite3", "stocks.db")
+	if err != nil {
+		log.Fatal(err.Error() + " During open stocks.db")
+	}
+	return db
+}
 
 func Index(w http.ResponseWriter, r *http.Request) {
-
-	selDB, err := db.Query("SELECT * FROM STOCKS")
+	db := dbConn()
+	rows, err := db.Query("SELECT * FROM STOCKS")
 	if err != nil {
-		panic(err.Error())
+		log.Fatal(err.Error() + " Error with SELECT * FROM STOCKS")
 	}
+
+	defer rows.Close()
 
 	stock := Stock{}
 	res := []Stock{}
 
-	for selDB.Next() {
+	for rows.Next() {
 		var name, date, price string
-		err := selDB.Scan(&name, &date, &price)
+		err := rows.Scan(&name, &date, &price)
 		if err != nil {
-			panic(err.Error())
+			log.Fatal(err.Error())
 		}
 
 		stock.Name = name
@@ -44,7 +53,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-
 	log.Println("Server started on: http://localhost:80")
 	http.HandleFunc("/", Index)
 	http.ListenAndServe(":80", nil)
