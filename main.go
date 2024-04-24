@@ -2,28 +2,50 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
+	"text/template"
 )
+
+type Stock struct {
+	Name  string
+	Date  string
+	Price string
+}
+
+var tmpl = template.Must(template.ParseGlob("templates/*"))
+var db, _ = sql.Open("sqlite3", "stocks.db")
+
+func Index(w http.ResponseWriter, r *http.Request) {
+
+	selDB, err := db.Query("SELECT * FROM STOCKS")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	stock := Stock{}
+	res := []Stock{}
+
+	for selDB.Next() {
+		var name, date, price string
+		err := selDB.Scan(&name, &date, &price)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		stock.Name = name
+		stock.Date = date
+		stock.Price = price
+		res = append(res, stock)
+	}
+
+	tmpl.ExecuteTemplate(w, "Index", res)
+}
 
 func main() {
 
-	db, _ := sql.Open("sqlite3", "stocks.db")
-	rows, _ := db.Query("SELECT * FROM STOCKS")
-
-	var stock, date, price string
-
-	for rows.Next() {
-		_ = rows.Scan(&stock, &date, &price)
-		log.Printf("Result: %s: %s: %s", stock, date, price)
-	}
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, you've requested: %s\n", r.URL.Path)
-	})
-
 	log.Println("Server started on: http://localhost:80")
+	http.HandleFunc("/", Index)
 	http.ListenAndServe(":80", nil)
 }
