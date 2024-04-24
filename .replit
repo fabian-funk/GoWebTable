@@ -1,0 +1,9 @@
+entrypoint = "main.go"
+run = ["go", "run", "."]
+
+[nix]
+channel = "stable-23_11"
+
+[[ports]]
+localPort = 80
+externalPort = 80
